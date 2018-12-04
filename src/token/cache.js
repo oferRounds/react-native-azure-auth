@@ -112,7 +112,9 @@ export default class TokenCache {
         }
         if (this.persistent) {
             const token = await AsyncStorage.getItem(key)
-            return RefreshTokenItem.fromJson(token)
+            if (token) {
+              return RefreshTokenItem.fromJson(token)
+            }
         }
         return null
     }
