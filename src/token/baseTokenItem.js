@@ -29,23 +29,26 @@ export default class BaseTokenItem {
     }
 
     static createRefreshTokenKey(clientId, userId) {
+      const lowerCaseUserId = userId ? userId.toLowerCase() : userId
         return Base64.encodeURI(clientId) +
             TOKEN_CACHE_KEY_DELIMITER +
-            Base64.encodeURI(userId)
+            Base64.encodeURI(lowerCaseUserId)
     }
 
     static createAccessTokenKey(clientId, userId, scope) {
+      const lowerCaseUserId = userId ? userId.toLowerCase() : userId
         return Base64.encodeURI(clientId) +
             TOKEN_CACHE_KEY_DELIMITER +
-            Base64.encodeURI(userId) +
+            Base64.encodeURI(lowerCaseUserId) +
             TOKEN_CACHE_KEY_DELIMITER +
             Base64.encodeURI(scope.toString())
     }
 
     static createTokenKeyPrefix(clientId, userId) {
+      const lowerCaseUserId = userId ? userId.toLowerCase() : userId
         return Base64.encodeURI(clientId) +
             TOKEN_CACHE_KEY_DELIMITER +
-            Base64.encodeURI(userId)
+            Base64.encodeURI(lowerCaseUserId)
     }
 
     static scopeFromKey(key) {
