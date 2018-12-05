@@ -189,18 +189,21 @@ export default class Auth {
             }
             let refreshToken = await this.cache.getRefreshToken(input.userId)
             if (refreshToken) {
-                const tokenResponse = await this.refreshTokens(refreshToken, scope)
+                const params = Object.assign(refreshToken, { scope: input.scope })
+                const tokenResponse = await this.refreshTokens(params)
+
                 if (tokenResponse && tokenResponse.refreshToken) {
                     this.cache.saveRefreshToken(tokenResponse)
                 }
+
                 if (tokenResponse && tokenResponse.accessToken) {
                     accessToken = await this.cache.saveAccessToken(tokenResponse)
                     return accessToken
                 }
             }
         } catch (error) {
-            console.error('Error in silent request: ', error)
-            //return error
+          console.error('Error in silent request: ', error)
+          return error
         }
 
         // Not possible silently acquire token - user interaction is needed
