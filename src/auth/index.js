@@ -245,7 +245,7 @@ export default class Auth {
     async clearPersistenCache(userId = null) {
         const tokenKeys = await this.cache.getAllUserTokenKeys(userId)
         tokenKeys.forEach((uTokenKey) => {
-            this.removeToken(uTokenKey)
+            this.cache.removeToken(uTokenKey)
         })
     }
 
