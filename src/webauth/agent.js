@@ -17,10 +17,12 @@ export default class Agent {
                 resolve(event.url)
             }
             Linking.addEventListener('url', urlHandler)
-            NativeModules.AzureAuth.showUrl(url, closeOnLoad, (err) => {
+            NativeModules.AzureAuth.showUrl(url, closeOnLoad, (err, redirectURL) => {
                 Linking.removeEventListener('url', urlHandler)
                 if (err) {
                     reject(err)
+                } else if(redirectURL) {
+                    resolve(redirectURL)
                 } else if (closeOnLoad) {
                     resolve()
                 }
@@ -28,7 +30,7 @@ export default class Agent {
         })
     }
 
-    generateNonceState() {
+    generateRequestParams() {
         if (!NativeModules.AzureAuth) {
             return Promise.reject(new Error('Missing NativeModule. Please make sure you run `react-native link react-native-azure-auth`'))
         }

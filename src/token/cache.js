@@ -1,4 +1,4 @@
-import  { AsyncStorage } from 'react-native'
+import AsyncStorage from '@react-native-community/async-storage'
 import { validate } from '../utils/validate'
 import AccessTokenItem from './accessTokenItem'
 import RefreshTokenItem from './refreshTokenItem'
@@ -21,10 +21,7 @@ let _instance = null
  */
 export default class TokenCache {
     constructor(input = {}) {
-        if (!_instance) {
-            _instance = this
-        }
-
+        // for better testability check params first
         const params = validate({
             parameters: {
                 clientId: { required: true },
@@ -32,18 +29,22 @@ export default class TokenCache {
             }
         }, input)
 
+        if (_instance) {
+            return _instance
+        }
+
         this.cache = {}
         this.clientId = params.clientId
         this.persistent = params.persistent || true // by default enabled
 
-        return _instance
+        _instance = this
     }
 
     async saveAccessToken(tokenResponse) {
         let accessToken = new AccessTokenItem(tokenResponse, this.clientId)
         const key = accessToken.tokenKey()
         // remove scope intersection  
-        const userTokens = await this.getUserAccessTokenKeys(accessToken.userId)
+        const userTokens = await this.getAllUserTokenKeys(accessToken.userId)
         userTokens.forEach((uTokenKey) => {
             const scopeFormKey = BaseTokenItem.scopeFromKey(uTokenKey)
             if (scopeFormKey && !accessToken.scope.equals(scopeFormKey) &&
@@ -81,7 +82,7 @@ export default class TokenCache {
     async getAccessToken(userId, scope) {
         const key = BaseTokenItem.createAccessTokenKey(this.clientId, userId, scope)
         if (this.cache[key]) {
-            return this.cache[key]
+            return AccessTokenItem.fromJson(this.cache[key])
         }
         const accessTokenKeyPrefix = BaseTokenItem.createTokenKeyPrefix(this.clientId, userId)
         for (const key of Object.getOwnPropertyNames(this.cache)) {
@@ -107,33 +108,44 @@ export default class TokenCache {
 
     async getRefreshToken(userId) {
         const key = BaseTokenItem.createRefreshTokenKey(this.clientId, userId)
+        let refreshToken = null
+
         if (this.cache[key]) {
-            return RefreshTokenItem.fromJson(this.cache[key])
+            refreshToken = RefreshTokenItem.fromJson(this.cache[key])
         }
         if (this.persistent) {
             const token = await AsyncStorage.getItem(key)
             if (token) {
-              return RefreshTokenItem.fromJson(token)
+                refreshToken = RefreshTokenItem.fromJson(token)
             }
         }
-        return null
+        if ((this.cache[key] || this.persistent) && !refreshToken) {
+            // broken token was saved
+            this.removeToken(key)
+        }
+        return refreshToken
     }
 
-    async getUserAccessTokenKeys(userId){
-        const accessTokenKeyPrefix = BaseTokenItem.createTokenKeyPrefix(this.clientId, userId)
+    /**
+     * Return all tokens for the client ID the cache initialized with and
+     * given user ID. If userId omitted - for all users of current client ID
+     * 
+     */
+    async getAllUserTokenKeys(userId){
+        const tokenKeyPrefix = BaseTokenItem.createTokenKeyPrefix(this.clientId, userId)
         console.info('getting tokens')
-        let accessTokenKeys = []
+        let tokenKeys = []
         if (this.persistent) {
             let keys = await AsyncStorage.getAllKeys()
             for (const key of keys) {
-                if (key.startsWith(accessTokenKeyPrefix)) accessTokenKeys.push(key)
+                if (key.startsWith(tokenKeyPrefix)) tokenKeys.push(key)
             }
         } else {
             for (const key of Object.getOwnPropertyNames(this.cache)) {
-                if (key.startsWith(accessTokenKeyPrefix)) accessTokenKeys.push(key)
+                if (key.startsWith(tokenKeyPrefix)) tokenKeys.push(key)
             }
         }
 
-        return accessTokenKeys
+        return tokenKeys
     }
 }

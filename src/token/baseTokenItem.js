@@ -45,10 +45,13 @@ export default class BaseTokenItem {
     }
 
     static createTokenKeyPrefix(clientId, userId) {
-      const lowerCaseUserId = userId ? userId.toLowerCase() : userId
-        return Base64.encodeURI(clientId) +
-            TOKEN_CACHE_KEY_DELIMITER +
-            Base64.encodeURI(lowerCaseUserId)
+        let prefix = Base64.encodeURI(clientId) + TOKEN_CACHE_KEY_DELIMITER
+        if (userId) {
+            const lowerCaseUserId = userId ? userId.toLowerCase() : userId
+            prefix = prefix + Base64.encodeURI(lowerCaseUserId)
+        }
+
+        return prefix
     }
 
     static scopeFromKey(key) {

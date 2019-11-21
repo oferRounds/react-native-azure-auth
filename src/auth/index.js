@@ -77,21 +77,17 @@ export default class Auth {
 
     /**
    * Builds the full logout endpoint url in the Authorization Server (AS) with given parameters.
-   *
-   * @param {Object} parameters parameters to send to `/logout`
-   * @param {String} [parameters.redirectUri] url where the user is redirected to after logout. It must be declared in you App Registration
-   * @returns {String} logout url with specified parameters
+   * https://login.microsoftonline.com/common/oauth2/logout?post_logout_redirect_uri=[URI]&redirect_uri=[URI]
+   * 
+   * @returns {String} logout url with default parameter
    *
    * @memberof Auth
    */
-    logoutUrl(parameters = {}) {
-        const query = validate({
-            parameters: {
-                redirectUri: { required: false, toName: 'post_logout_redirect_uri' }
-            }
-        }, parameters)
-        // https://login.microsoftonline.com/common/oauth2/logout?post_logout_redirect_uri=[URI]&redirect_uri=[URI]
-        return this.client.url('logout', {redirect_uri: query.post_logout_redirect_uri, ...query})
+    logoutUrl() {
+        return this.client.url('logout', {
+            post_logout_redirect_uri: this.redirectUri,
+            redirect_uri: this.redirectUri
+        })
     }
 
     /**
@@ -111,7 +107,8 @@ export default class Auth {
         const payload = validate({
             parameters: {
                 code: { required: true },
-                scope: { required: true }
+                scope: { required: true },
+                code_verifier: { required: true },
             }
         }, input)
 
@@ -189,9 +186,7 @@ export default class Auth {
             }
             let refreshToken = await this.cache.getRefreshToken(input.userId)
             if (refreshToken) {
-                const params = Object.assign(refreshToken, { scope: input.scope })
-                const tokenResponse = await this.refreshTokens(params)
-
+                const tokenResponse = await this.refreshTokens({refreshToken: refreshToken.refreshToken, scope: scope})
                 if (tokenResponse && tokenResponse.refreshToken) {
                     this.cache.saveRefreshToken(tokenResponse)
                 }
@@ -220,6 +215,7 @@ export default class Auth {
    * @returns {Promise}
    * @see https://developer.microsoft.com/en-us/graph/docs/concepts/overview
    * @see https://developer.microsoft.com/en-us/graph/docs/api-reference/v1.0/api/user_get
+   * 
    * @memberof Auth
    */
     msGraphRequest(parameters = {}) {
@@ -236,6 +232,21 @@ export default class Auth {
         return client
             .get(clearedPath) // get info for currently authorized user
             .then(responseHandler)
+    }
+
+    /**
+     * Clear persystent cache - AsyncStorage - for given client ID and user ID or ALL users
+     * 
+     * @param {String} userId ID of user whose tokens will be cleared/deleted
+     *      if ommited - tokens for ALL users and current client will be cleared
+     * 
+     * @memberof Auth
+     */
+    async clearPersistenCache(userId = null) {
+        const tokenKeys = await this.cache.getAllUserTokenKeys(userId)
+        tokenKeys.forEach((uTokenKey) => {
+            this.removeToken(uTokenKey)
+        })
     }
 
 }
